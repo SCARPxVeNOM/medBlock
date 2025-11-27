@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getRecord } from '../api';
+import GrantModal from '../components/GrantModal';
 import { ArrowLeft, Shield, User, Calendar, Hash, Database, Lock, Share2, Clock, CheckCircle } from 'lucide-react';
 
 function RecordDetail() {
@@ -11,6 +12,7 @@ function RecordDetail() {
   const [record, setRecord] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showGrantModal, setShowGrantModal] = useState(false);
 
   useEffect(() => {
     loadRecord();
@@ -27,6 +29,10 @@ function RecordDetail() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGrantSuccess = () => {
+    loadRecord(); // Reload record to show updated access grants
   };
 
   if (loading) {
@@ -203,7 +209,10 @@ function RecordDetail() {
               <p className="text-blue-100 mb-6">
                 Grant access to other organizations in the network
               </p>
-              <button className="w-full px-6 py-3 bg-white hover:bg-blue-50 text-blue-600 rounded-xl font-bold transition-all shadow-lg">
+              <button 
+                onClick={() => setShowGrantModal(true)}
+                className="w-full px-6 py-3 bg-white hover:bg-blue-50 text-blue-600 rounded-xl font-bold transition-all shadow-lg"
+              >
                 Grant Access
               </button>
             </div>
@@ -275,6 +284,16 @@ function RecordDetail() {
           </div>
         </div>
       </div>
+
+      {/* Grant Modal */}
+      {record && (
+        <GrantModal
+          isOpen={showGrantModal}
+          onClose={() => setShowGrantModal(false)}
+          record={record}
+          onGrant={handleGrantSuccess}
+        />
+      )}
     </div>
   );
 }

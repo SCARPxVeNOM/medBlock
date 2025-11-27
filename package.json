@@ -1,0 +1,20 @@
+{
+  "name": "medblock",
+  "version": "1.0.0",
+  "description": "MedBlock - Healthcare Data Collaboration Platform",
+  "scripts": {
+    "start": "node start-all.js",
+    "start:all": "node start-all.js",
+    "start:docker": "docker-compose up -d",
+    "start:backend": "cd backend && npm run start:all",
+    "start:frontend": "cd frontend && npm start",
+    "stop": "node stop-all.js",
+    "stop:docker": "docker-compose down",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "seed:db": "cd backend && node seedDatabase.js"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
+

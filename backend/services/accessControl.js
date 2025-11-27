@@ -108,6 +108,14 @@ async function grantAccess(recordId, ownerId, granteeId, purpose, expiryDays = 3
         });
 
         await accessGrant.save();
+        console.log(`[grantAccess] Created grant:`, {
+            grantId: accessGrant.grantId,
+            recordId: accessGrant.recordId,
+            ownerId: accessGrant.ownerId,
+            granteeId: accessGrant.granteeId,
+            status: accessGrant.status,
+            expiryDate: accessGrant.expiryDate
+        });
 
         // Update access request if it exists
         await AccessRequest.updateOne(

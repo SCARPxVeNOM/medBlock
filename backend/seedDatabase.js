@@ -15,29 +15,7 @@ async function seedDatabase() {
         // Clear existing organizations
         await Organization.deleteMany({});
 
-        // Create Hospital A
-        const hospitalA = new Organization({
-            orgId: 'hospital-a',
-            name: 'Hospital A - Medical Center',
-            type: 'hospital',
-            email: 'admin@hospitala.com',
-            status: 'active'
-        });
-        await hospitalA.save();
-        console.log('✓ Created Hospital A');
-
-        // Create Hospital B
-        const hospitalB = new Organization({
-            orgId: 'hospital-b',
-            name: 'Hospital B - Regional Clinic',
-            type: 'hospital',
-            email: 'admin@hospitalb.com',
-            status: 'active'
-        });
-        await hospitalB.save();
-        console.log('✓ Created Hospital B');
-
-        // Also create org1 for backward compatibility
+        // Create Organization 1
         const org1 = new Organization({
             orgId: 'org1',
             name: 'Organization 1',
@@ -46,13 +24,35 @@ async function seedDatabase() {
             status: 'active'
         });
         await org1.save();
-        console.log('✓ Created org1 (for compatibility)');
+        console.log('✓ Created org1');
+
+        // Create Hospital 1
+        const hospital1 = new Organization({
+            orgId: 'hospital1',
+            name: 'Hospital 1 - Medical Center',
+            type: 'hospital',
+            email: 'admin@hospital1.com',
+            status: 'active'
+        });
+        await hospital1.save();
+        console.log('✓ Created Hospital 1');
+
+        // Create Hospital 2
+        const hospital2 = new Organization({
+            orgId: 'hospital2',
+            name: 'Hospital 2 - Regional Clinic',
+            type: 'hospital',
+            email: 'admin@hospital2.com',
+            status: 'active'
+        });
+        await hospital2.save();
+        console.log('✓ Created Hospital 2');
 
         console.log('\n✅ Database seeded successfully!\n');
         console.log('Organizations created:');
-        console.log('  - Hospital A (hospital-a)');
-        console.log('  - Hospital B (hospital-b)');
-        console.log('  - Organization 1 (org1)\n');
+        console.log('  - Organization 1 (org1)');
+        console.log('  - Hospital 1 (hospital1)');
+        console.log('  - Hospital 2 (hospital2)\n');
 
         process.exit(0);
     } catch (error) {

@@ -56,9 +56,19 @@ module.exports = function(app) {
         try {
             const { recordId, ownerId, granteeId, purpose, expiryDays } = req.body;
 
+            console.log('[access/grant] Grant request received:', {
+                recordId,
+                ownerId,
+                granteeId,
+                purpose,
+                expiryDays: expiryDays || 30
+            });
+
             if (!recordId || !ownerId || !granteeId || !purpose) {
+                console.error('[access/grant] Missing required fields:', { recordId, ownerId, granteeId, purpose });
                 return res.status(400).json({ 
-                    error: 'Missing required fields' 
+                    error: 'Missing required fields',
+                    received: { recordId: !!recordId, ownerId: !!ownerId, granteeId: !!granteeId, purpose: !!purpose }
                 });
             }
 
@@ -70,13 +80,21 @@ module.exports = function(app) {
                 expiryDays || 30
             );
 
+            console.log('[access/grant] Grant created successfully:', {
+                grantId: accessGrant.grantId,
+                granteeId: accessGrant.granteeId,
+                recordId: accessGrant.recordId
+            });
+
             res.json({
                 status: 'success',
                 grantId: accessGrant.grantId,
+                granteeId: accessGrant.granteeId,
                 message: 'Access granted successfully'
             });
         } catch (error) {
-            console.error('Error granting access:', error);
+            console.error('[access/grant] Error granting access:', error);
+            console.error('[access/grant] Error stack:', error.stack);
             res.status(500).json({ 
                 error: 'Failed to grant access',
                 message: error.message 
@@ -194,6 +212,42 @@ module.exports = function(app) {
         } catch (error) {
             console.error('Error fetching organizations:', error);
             res.status(500).json({ error: 'Failed to fetch organizations' });
+        }
+    });
+
+    /**
+     * GET /api/debug/grants?granteeId=xxx
+     * Debug endpoint to see all grants for a grantee (any status)
+     */
+    app.get('/api/debug/grants', async (req, res) => {
+        try {
+            const { granteeId } = req.query;
+            
+            if (!granteeId) {
+                return res.status(400).json({ error: 'granteeId required' });
+            }
+
+            const grants = await AccessGrant.find({
+                granteeId: { $regex: new RegExp(`^${granteeId}$`, 'i') }
+            }).sort({ grantedAt: -1 });
+
+            res.json({
+                granteeId,
+                totalGrants: grants.length,
+                grants: grants.map(g => ({
+                    grantId: g.grantId,
+                    recordId: g.recordId,
+                    ownerId: g.ownerId,
+                    granteeId: g.granteeId,
+                    status: g.status,
+                    expiryDate: g.expiryDate,
+                    grantedAt: g.grantedAt,
+                    isExpired: g.expiryDate < new Date()
+                }))
+            });
+        } catch (error) {
+            console.error('Error fetching debug grants:', error);
+            res.status(500).json({ error: 'Failed to fetch grants' });
         }
     });
 };

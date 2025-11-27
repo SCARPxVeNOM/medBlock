@@ -13,6 +13,7 @@ const { encryptRecord, generateDEK } = require('./lib/crypto');
 const { uploadToMinIO } = require('./lib/minioClient');
 const { wrapKey } = require('./lib/vaultClient');
 const { createRecordTransaction } = require('./lib/fabricClient');
+const { connectDatabase } = require('./config/database');
 const apiRouter = require('./api');
 
 const app = express();
@@ -30,6 +31,15 @@ app.use(cors({
 
 app.use(express.json());
 app.use('/api', apiRouter);
+
+// Connect to MongoDB
+connectDatabase().catch(err => {
+    console.error('Failed to connect to MongoDB:', err);
+});
+
+// Import and register MongoDB routes
+require('./routes/accessControl')(app);
+require('./routes/records')(app);
 
 /**
  * POST /api/upload

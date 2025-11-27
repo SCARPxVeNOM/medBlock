@@ -6,6 +6,7 @@
   "scripts": {
     "start:uploader": "node uploader.js",
     "start:keyservice": "node keyservice.js",
+    "start:all": "node -e \"require('child_process').spawn('node', ['uploader.js'], {env: {...process.env, PORT: '3001'}, stdio: 'inherit', shell: true}); setTimeout(() => require('child_process').spawn('node', ['keyservice.js'], {env: {...process.env, PORT: '3002'}, stdio: 'inherit', shell: true}), 2000);\"",
     "test": "mocha tests/**/*.test.js --timeout 10000",
     "test:crypto": "mocha tests/crypto.test.js",
     "test:chaincode": "mocha tests/chaincode.test.js"

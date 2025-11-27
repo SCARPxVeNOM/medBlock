@@ -16,11 +16,21 @@ function SharedRecordsView() {
   const loadSharedRecords = async () => {
     try {
       setLoading(true);
+      console.log('[SharedRecordsView] Loading shared records for user.id:', user.id);
       const response = await fetch(`http://localhost:3001/api/shared-records?granteeId=${user.id}`);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('[SharedRecordsView] API error:', errorData);
+        throw new Error(errorData.error || 'Failed to load shared records');
+      }
+      
       const data = await response.json();
+      console.log('[SharedRecordsView] Received shared records:', data);
       setSharedRecords(data);
     } catch (error) {
-      console.error('Error loading shared records:', error);
+      console.error('[SharedRecordsView] Error loading shared records:', error);
+      setSharedRecords([]);
     } finally {
       setLoading(false);
     }
