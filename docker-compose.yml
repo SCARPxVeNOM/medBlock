@@ -1,4 +1,5 @@
-version: '3.8'
+# Main docker-compose - includes Fabric network and application services
+# Run: docker-compose up -d
 
 services:
   # Hyperledger Fabric Network

@@ -4,6 +4,7 @@
  */
 
 const express = require('express');
+const cors = require('cors');
 const { Gateway, Wallets } = require('fabric-network');
 const path = require('path');
 const fs = require('fs').promises;
@@ -11,12 +12,20 @@ const { unwrapKey, rewrapKey } = require('./lib/vaultClient');
 const { getFabricGateway } = require('./lib/fabricClient');
 
 const app = express();
+
+// Enable CORS for frontend
+app.use(cors({
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    credentials: true
+}));
+
 app.use(express.json());
 
 let eventListener = null;
 
 /**
  * Initialize Fabric event listener
+ * Gracefully handles missing Fabric network
  */
 async function initializeEventListener() {
     try {
@@ -53,8 +62,11 @@ async function initializeEventListener() {
         eventListener = { gateway, network, contract };
 
     } catch (error) {
-        console.error('Failed to initialize event listener:', error);
-        throw error;
+        console.warn('Fabric network not available, running in standalone mode:', error.message);
+        console.log('Key service will work without Fabric event listener');
+        console.log('You can manually trigger key re-encryption via API');
+        eventListener = null;
+        // Don't throw - allow service to run without Fabric
     }
 }
 
@@ -187,6 +199,40 @@ app.get('/api/health', (req, res) => {
     });
 });
 
+/**
+ * POST /api/keys/rewrap
+ * Manually trigger key re-encryption (for testing without Fabric)
+ * Body: { recordId, granteeId, ownerId }
+ */
+app.post('/api/keys/rewrap', async (req, res) => {
+    try {
+        const { recordId, granteeId, ownerId } = req.body;
+
+        if (!recordId || !granteeId || !ownerId) {
+            return res.status(400).json({ 
+                error: 'Missing required fields: recordId, granteeId, ownerId' 
+            });
+        }
+
+        // Simulate access grant event
+        await handleAccessGrant({ recordId, granteeId, grantId: `manual_${Date.now()}` });
+
+        res.json({
+            status: 'success',
+            message: 'Key re-encryption completed',
+            recordId,
+            granteeId
+        });
+
+    } catch (error) {
+        console.error('Error in manual rewrap:', error);
+        res.status(500).json({ 
+            error: 'Failed to rewrap key',
+            message: error.message 
+        });
+    }
+});
+
 const PORT = process.env.PORT || 3002;
 
 // Initialize and start server
@@ -194,12 +240,20 @@ initializeEventListener()
     .then(() => {
         app.listen(PORT, () => {
             console.log(`Key service running on port ${PORT}`);
-            console.log('Event listener active');
+            if (eventListener) {
+                console.log('✓ Fabric event listener active');
+            } else {
+                console.log('⚠ Running in standalone mode (no Fabric network)');
+                console.log('  Use POST /api/keys/rewrap to manually trigger key re-encryption');
+            }
         });
     })
     .catch((error) => {
         console.error('Failed to start key service:', error);
-        process.exit(1);
+        // Start anyway in standalone mode
+        app.listen(PORT, () => {
+            console.log(`Key service running on port ${PORT} (standalone mode)`);
+        });
     });
 
 module.exports = app;

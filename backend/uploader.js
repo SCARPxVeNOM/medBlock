@@ -8,6 +8,7 @@ const multer = require('multer');
 const crypto = require('crypto');
 const fs = require('fs').promises;
 const path = require('path');
+const cors = require('cors');
 const { encryptRecord, generateDEK } = require('./lib/crypto');
 const { uploadToMinIO } = require('./lib/minioClient');
 const { wrapKey } = require('./lib/vaultClient');
@@ -16,6 +17,12 @@ const apiRouter = require('./api');
 
 const app = express();
 const upload = multer({ dest: 'uploads/' });
+
+// Enable CORS for frontend
+app.use(cors({
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    credentials: true
+}));
 
 app.use(express.json());
 app.use('/api', apiRouter);
@@ -86,15 +93,21 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
             timestamp: new Date().toISOString()
         }));
 
-        // Submit transaction to Fabric chaincode
-        const txResult = await createRecordTransaction(
-            recordId,
-            ownerId,
-            storagePointer,
-            ciphertextHash,
-            policyId
-        );
-        console.log(`Fabric transaction submitted: ${txResult.txId}`);
+        // Submit transaction to Fabric chaincode (if available)
+        let txResult = null;
+        try {
+            txResult = await createRecordTransaction(
+                recordId,
+                ownerId,
+                storagePointer,
+                ciphertextHash,
+                policyId
+            );
+            console.log(`Fabric transaction submitted: ${txResult.txId}`);
+        } catch (fabricError) {
+            console.warn('Fabric network not available, record stored without blockchain:', fabricError.message);
+            // Continue without Fabric - record is still encrypted and stored
+        }
 
         // Cleanup uploaded file
         await fs.unlink(filePath);
@@ -104,8 +117,9 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
             recordId,
             storagePointer,
             ciphertextHash,
-            txId: txResult.txId,
-            message: 'Record encrypted and stored successfully'
+            txId: txResult?.txId || 'no-fabric',
+            message: 'Record encrypted and stored successfully',
+            note: txResult ? 'Stored on blockchain' : 'Stored locally (Fabric network not available)'
         });
 
     } catch (error) {

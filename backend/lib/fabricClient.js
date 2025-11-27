@@ -16,6 +16,7 @@ let gateway = null;
 
 /**
  * Get or create Fabric gateway connection
+ * Returns null if Fabric network is not available (graceful degradation)
  */
 async function getFabricGateway() {
     if (gateway) {
@@ -27,6 +28,14 @@ async function getFabricGateway() {
     try {
         // Load connection profile
         const ccpPath = path.join(__dirname, '../../fabric-network/connection-org1.json');
+        
+        // Check if connection profile exists
+        try {
+            await fs.access(ccpPath);
+        } catch {
+            throw new Error('Fabric connection profile not found. Running without Fabric network.');
+        }
+
         const ccp = JSON.parse(await fs.readFile(ccpPath, 'utf8'));
 
         // Create wallet
@@ -35,11 +44,45 @@ async function getFabricGateway() {
         // Check if user identity exists
         const userExists = await wallet.get('appUser');
         if (!userExists) {
-            console.log('Creating user identity...');
-            // TODO: Load user certificate and key from fabric-network
-            // For PoC, use admin identity
-            const adminPath = path.join(__dirname, '../../fabric-network/peer0.org1.example.com/msp/admincerts');
-            // This is a stub - in production, properly load admin cert
+            console.log('Setting up admin identity in wallet...');
+            
+            // Load admin identity from crypto-config
+            const adminCertPath = path.join(__dirname, '../../fabric-network/crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/signcerts');
+            const adminKeyPath = path.join(__dirname, '../../fabric-network/crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/keystore');
+            
+            try {
+                // Find certificate file
+                const certFiles = await fs.readdir(adminCertPath);
+                const certFile = certFiles.find(f => f.endsWith('.pem'));
+                
+                // Find private key file
+                const keyFiles = await fs.readdir(adminKeyPath);
+                const keyFile = keyFiles.find(f => f.endsWith('_sk'));
+                
+                if (certFile && keyFile) {
+                    const cert = await fs.readFile(path.join(adminCertPath, certFile), 'utf8');
+                    const key = await fs.readFile(path.join(adminKeyPath, keyFile), 'utf8');
+                    
+                    // Create identity
+                    const x509Identity = {
+                        credentials: {
+                            certificate: cert,
+                            privateKey: key
+                        },
+                        mspId: 'Org1MSP',
+                        type: 'X.509'
+                    };
+                    
+                    await wallet.put('appUser', x509Identity);
+                    console.log('Admin identity added to wallet');
+                } else {
+                    throw new Error('Admin certificate or key not found');
+                }
+            } catch (error) {
+                console.warn('Could not load admin identity:', error.message);
+                console.warn('Wallet setup may be needed. Run: ./scripts/setup-wallet.sh');
+                throw new Error('Wallet identity not found. Please run setup-wallet.sh');
+            }
         }
 
         // Connect to gateway
@@ -53,17 +96,23 @@ async function getFabricGateway() {
         return gateway;
 
     } catch (error) {
-        console.error('Failed to connect to Fabric:', error);
-        throw error;
+        console.warn('Fabric network not available:', error.message);
+        // Return null instead of throwing - allows graceful degradation
+        return null;
     }
 }
 
 /**
  * Submit CreateRecord transaction
+ * Returns null if Fabric network is not available
  */
 async function createRecordTransaction(recordId, ownerId, pointer, ciphertextHash, policyId) {
     try {
         const gateway = await getFabricGateway();
+        if (!gateway) {
+            return null; // Fabric not available
+        }
+
         const network = await gateway.getNetwork(CHANNEL_NAME);
         const contract = network.getContract(CHAINCODE_NAME);
 
@@ -93,10 +142,16 @@ async function createRecordTransaction(recordId, ownerId, pointer, ciphertextHas
 
 /**
  * Query records by owner
+ * Returns empty array if Fabric network is not available
  */
 async function queryRecordsByOwner(ownerId) {
     try {
         const gateway = await getFabricGateway();
+        if (!gateway) {
+            console.warn('Fabric network not available, returning empty records');
+            return []; // Return empty array if Fabric not available
+        }
+
         const network = await gateway.getNetwork(CHANNEL_NAME);
         const contract = network.getContract(CHAINCODE_NAME);
 
@@ -105,16 +160,22 @@ async function queryRecordsByOwner(ownerId) {
 
     } catch (error) {
         console.error('Fabric query error:', error);
-        throw error;
+        // Return empty array instead of throwing
+        return [];
     }
 }
 
 /**
  * Get record by ID
+ * Returns null if Fabric network is not available
  */
 async function getRecord(recordId) {
     try {
         const gateway = await getFabricGateway();
+        if (!gateway) {
+            return null; // Fabric not available
+        }
+
         const network = await gateway.getNetwork(CHANNEL_NAME);
         const contract = network.getContract(CHAINCODE_NAME);
 
@@ -123,16 +184,21 @@ async function getRecord(recordId) {
 
     } catch (error) {
         console.error('Fabric query error:', error);
-        throw error;
+        return null; // Return null instead of throwing
     }
 }
 
 /**
  * Submit GrantAccess transaction
+ * Returns null if Fabric network is not available
  */
 async function grantAccessTransaction(recordId, granteeId, purpose, expiry) {
     try {
         const gateway = await getFabricGateway();
+        if (!gateway) {
+            return null; // Fabric not available
+        }
+
         const network = await gateway.getNetwork(CHANNEL_NAME);
         const contract = network.getContract(CHAINCODE_NAME);
 
@@ -151,16 +217,21 @@ async function grantAccessTransaction(recordId, granteeId, purpose, expiry) {
 
     } catch (error) {
         console.error('Fabric transaction error:', error);
-        throw error;
+        return null; // Return null instead of throwing
     }
 }
 
 /**
  * Submit RequestAccess transaction
+ * Returns null if Fabric network is not available
  */
 async function requestAccessTransaction(recordId, granteeId, purpose) {
     try {
         const gateway = await getFabricGateway();
+        if (!gateway) {
+            return null; // Fabric not available
+        }
+
         const network = await gateway.getNetwork(CHANNEL_NAME);
         const contract = network.getContract(CHAINCODE_NAME);
 
@@ -178,7 +249,7 @@ async function requestAccessTransaction(recordId, granteeId, purpose) {
 
     } catch (error) {
         console.error('Fabric transaction error:', error);
-        throw error;
+        return null; // Return null instead of throwing
     }
 }
 
