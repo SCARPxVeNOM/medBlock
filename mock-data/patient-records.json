@@ -1,0 +1,253 @@
+[
+  {
+    "filename": "patient-001-diabetic.json",
+    "data": {
+      "resourceType": "Patient",
+      "id": "patient-001",
+      "meta": {
+        "versionId": "1",
+        "lastUpdated": "2024-11-20T10:30:00Z"
+      },
+      "identifier": [
+        {
+          "system": "http://hospital.example.org/patients",
+          "value": "MRN-001-DM"
+        }
+      ],
+      "name": [
+        {
+          "use": "official",
+          "family": "Anderson",
+          "given": ["Sarah", "Marie"]
+        }
+      ],
+      "gender": "female",
+      "birthDate": "1975-08-22",
+      "address": [
+        {
+          "use": "home",
+          "line": ["456 Oak Avenue"],
+          "city": "Boston",
+          "state": "MA",
+          "postalCode": "02101",
+          "country": "US"
+        }
+      ],
+      "condition": [
+        {
+          "code": {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "44054006",
+                "display": "Type 2 Diabetes Mellitus"
+              }
+            ]
+          },
+          "onsetDateTime": "2018-03-15"
+        }
+      ]
+    }
+  },
+  {
+    "filename": "patient-002-cardiac.json",
+    "data": {
+      "resourceType": "Patient",
+      "id": "patient-002",
+      "meta": {
+        "versionId": "1",
+        "lastUpdated": "2024-11-21T14:15:00Z"
+      },
+      "identifier": [
+        {
+          "system": "http://hospital.example.org/patients",
+          "value": "MRN-002-CARD"
+        }
+      ],
+      "name": [
+        {
+          "use": "official",
+          "family": "Chen",
+          "given": ["Michael", "Wei"]
+        }
+      ],
+      "gender": "male",
+      "birthDate": "1962-05-10",
+      "address": [
+        {
+          "use": "home",
+          "line": ["789 Pine Street"],
+          "city": "San Francisco",
+          "state": "CA",
+          "postalCode": "94102",
+          "country": "US"
+        }
+      ],
+      "condition": [
+        {
+          "code": {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "53741008",
+                "display": "Coronary Artery Disease"
+              }
+            ]
+          },
+          "onsetDateTime": "2020-06-22"
+        }
+      ]
+    }
+  },
+  {
+    "filename": "patient-003-respiratory.json",
+    "data": {
+      "resourceType": "Patient",
+      "id": "patient-003",
+      "meta": {
+        "versionId": "1",
+        "lastUpdated": "2024-11-22T09:45:00Z"
+      },
+      "identifier": [
+        {
+          "system": "http://hospital.example.org/patients",
+          "value": "MRN-003-RESP"
+        }
+      ],
+      "name": [
+        {
+          "use": "official",
+          "family": "Rodriguez",
+          "given": ["Maria", "Elena"]
+        }
+      ],
+      "gender": "female",
+      "birthDate": "1988-12-03",
+      "address": [
+        {
+          "use": "home",
+          "line": ["321 Maple Drive"],
+          "city": "Miami",
+          "state": "FL",
+          "postalCode": "33101",
+          "country": "US"
+        }
+      ],
+      "condition": [
+        {
+          "code": {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "195967001",
+                "display": "Asthma"
+              }
+            ]
+          },
+          "onsetDateTime": "2015-09-10"
+        }
+      ]
+    }
+  },
+  {
+    "filename": "patient-004-oncology.json",
+    "data": {
+      "resourceType": "Patient",
+      "id": "patient-004",
+      "meta": {
+        "versionId": "1",
+        "lastUpdated": "2024-11-23T11:20:00Z"
+      },
+      "identifier": [
+        {
+          "system": "http://hospital.example.org/patients",
+          "value": "MRN-004-ONC"
+        }
+      ],
+      "name": [
+        {
+          "use": "official",
+          "family": "Thompson",
+          "given": ["Robert", "James"]
+        }
+      ],
+      "gender": "male",
+      "birthDate": "1970-03-28",
+      "address": [
+        {
+          "use": "home",
+          "line": ["555 Cedar Lane"],
+          "city": "Seattle",
+          "state": "WA",
+          "postalCode": "98101",
+          "country": "US"
+        }
+      ],
+      "condition": [
+        {
+          "code": {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "254837009",
+                "display": "Breast Cancer"
+              }
+            ]
+          },
+          "onsetDateTime": "2022-01-15"
+        }
+      ]
+    }
+  },
+  {
+    "filename": "patient-005-neurology.json",
+    "data": {
+      "resourceType": "Patient",
+      "id": "patient-005",
+      "meta": {
+        "versionId": "1",
+        "lastUpdated": "2024-11-24T16:30:00Z"
+      },
+      "identifier": [
+        {
+          "system": "http://hospital.example.org/patients",
+          "value": "MRN-005-NEURO"
+        }
+      ],
+      "name": [
+        {
+          "use": "official",
+          "family": "Patel",
+          "given": ["Priya", "Sharma"]
+        }
+      ],
+      "gender": "female",
+      "birthDate": "1982-07-19",
+      "address": [
+        {
+          "use": "home",
+          "line": ["888 Birch Road"],
+          "city": "Austin",
+          "state": "TX",
+          "postalCode": "73301",
+          "country": "US"
+        }
+      ],
+      "condition": [
+        {
+          "code": {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "24700007",
+                "display": "Multiple Sclerosis"
+              }
+            ]
+          },
+          "onsetDateTime": "2019-11-05"
+        }
+      ]
+    }
+  }
+]
+

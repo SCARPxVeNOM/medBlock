@@ -4,9 +4,45 @@
  */
 
 const express = require('express');
+const fs = require('fs').promises;
+const path = require('path');
 const { queryRecordsByOwner, getRecord, requestAccessTransaction, grantAccessTransaction } = require('./lib/fabricClient');
 
 const router = express.Router();
+
+/**
+ * Load records from local keys directory (fallback when Fabric not available)
+ */
+async function loadLocalRecords(ownerId) {
+    try {
+        const keysDir = path.join(__dirname, 'keys');
+        const files = await fs.readdir(keysDir);
+        const records = [];
+
+        for (const file of files) {
+            if (file.endsWith('.json')) {
+                const filePath = path.join(keysDir, file);
+                const content = await fs.readFile(filePath, 'utf8');
+                const metadata = JSON.parse(content);
+                
+                if (metadata.ownerId === ownerId || !ownerId) {
+                    records.push({
+                        recordId: metadata.recordId,
+                        ownerId: metadata.ownerId,
+                        timestamp: metadata.timestamp,
+                        ciphertextHash: 'encrypted',
+                        accessGrantsCount: 0
+                    });
+                }
+            }
+        }
+
+        return records;
+    } catch (error) {
+        console.error('Error loading local records:', error);
+        return [];
+    }
+}
 
 /**
  * GET /api/records?ownerId=xxx
@@ -20,14 +56,21 @@ router.get('/records', async (req, res) => {
             return res.status(400).json({ error: 'ownerId required' });
         }
 
-        const records = await queryRecordsByOwner(ownerId);
+        // Try Fabric first
+        let records = await queryRecordsByOwner(ownerId);
         
-        // If no records from Fabric, return empty array (or could load from local storage)
+        // If no records from Fabric, load from local storage
+        if (!records || records.length === 0) {
+            console.log('Fabric not available, loading records from local storage');
+            records = await loadLocalRecords(ownerId);
+        }
+        
         res.json(records || []);
     } catch (error) {
         console.error('Query error:', error);
-        // Return empty array instead of error
-        res.json([]);
+        // Try local storage as fallback
+        const localRecords = await loadLocalRecords(ownerId);
+        res.json(localRecords);
     }
 });
 

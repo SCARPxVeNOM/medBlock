@@ -64,16 +64,11 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-          <nav className="bg-white/5 backdrop-blur-md border-b border-white/10 sticky top-0 z-50">
+        <div className="min-h-screen bg-gradient-to-br from-black-900 via-black-800 to-black-900">
+          <nav className="bg-black/5 backdrop-blur-md border-b border-black/10 sticky top-0 z-50">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex justify-between h-16">
-                <div className="flex items-center">
-                  <h1 className="text-xl font-bold bg-gradient-to-r from-[#ffaa40] via-[#9c40ff] to-[#ffaa40] bg-[length:200%_auto] bg-clip-text text-transparent animate-gradient">
-                    MedBlock
-                  </h1>
-                  <span className="ml-4 text-sm text-white/60">Healthcare Data Collaboration</span>
-                </div>
+                
                 <div className="flex items-center space-x-4">
                   <NavLinks />
                 </div>

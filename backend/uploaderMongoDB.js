@@ -1,24 +1,24 @@
 /**
- * Healthcare Record Uploader Service
- * Handles encryption, MinIO upload, and Fabric chaincode submission
+ * Healthcare Record Uploader Service with MongoDB
+ * Handles encryption, MinIO upload, and MongoDB storage
  */
 
 const express = require('express');
 const multer = require('multer');
 const crypto = require('crypto');
 const fs = require('fs').promises;
-const path = require('path');
 const cors = require('cors');
+const { connectDatabase } = require('./config/database');
 const { encryptRecord, generateDEK } = require('./lib/crypto');
 const { uploadToMinIO } = require('./lib/minioClient');
 const { wrapKey } = require('./lib/vaultClient');
-const { createRecordTransaction } = require('./lib/fabricClient');
-const apiRouter = require('./api');
+const Record = require('./models/Record');
+const { logAudit } = require('./services/accessControl');
 
 const app = express();
 const upload = multer({ dest: 'uploads/' });
 
-// Enable CORS for frontend
+// Enable CORS
 app.use(cors({
     origin: [
         'http://localhost:3000',
@@ -29,12 +29,15 @@ app.use(cors({
 }));
 
 app.use(express.json());
-app.use('/api', apiRouter);
+
+// Connect to MongoDB
+connectDatabase().catch(err => {
+    console.error('Failed to connect to MongoDB:', err);
+});
 
 /**
  * POST /api/upload
  * Upload and encrypt a FHIR JSON record
- * Body: { ownerId, policyId, file (multipart) }
  */
 app.post('/api/upload', upload.single('file'), async (req, res) => {
     try {
@@ -61,7 +64,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 
         // Generate random DEK (256-bit)
         const dek = generateDEK();
-        console.log(`Generated DEK for record: ${dek.toString('hex').substring(0, 16)}...`);
+        console.log(`Generated DEK for record`);
 
         // Encrypt FHIR JSON with AES-GCM
         const { ciphertext, iv, authTag } = await encryptRecord(fhirData, dek);
@@ -86,32 +89,35 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
         const wrappedDEK = await wrapKey(dek, ownerId);
         console.log(`Wrapped DEK via Vault`);
 
-        // Store wrapped DEK metadata locally (in production, use secure storage)
-        const dekMetadataPath = path.join('keys', `${recordId}.json`);
-        await fs.mkdir('keys', { recursive: true });
-        await fs.writeFile(dekMetadataPath, JSON.stringify({
+        // Extract metadata from FHIR
+        const metadata = {
+            resourceType: fhirJson.resourceType,
+            patientName: fhirJson.name ? 
+                `${fhirJson.name[0]?.given?.[0] || ''} ${fhirJson.name[0]?.family || ''}`.trim() : 
+                null,
+            condition: fhirJson.condition?.[0]?.code?.coding?.[0]?.display,
+            lastUpdated: fhirJson.meta?.lastUpdated || new Date()
+        };
+
+        // Save to MongoDB
+        const record = new Record({
             recordId,
             ownerId,
+            patientId: fhirJson.id,
+            storagePointer,
+            ciphertextHash,
             wrappedDEK: wrappedDEK.toString('base64'),
             iv: iv.toString('base64'),
-            timestamp: new Date().toISOString()
-        }));
+            policyId,
+            metadata,
+            status: 'active'
+        });
 
-        // Submit transaction to Fabric chaincode (if available)
-        let txResult = null;
-        try {
-            txResult = await createRecordTransaction(
-                recordId,
-                ownerId,
-                storagePointer,
-                ciphertextHash,
-                policyId
-            );
-            console.log(`Fabric transaction submitted: ${txResult.txId}`);
-        } catch (fabricError) {
-            console.warn('Fabric network not available, record stored without blockchain:', fabricError.message);
-            // Continue without Fabric - record is still encrypted and stored
-        }
+        await record.save();
+        console.log(`Saved to MongoDB: ${recordId}`);
+
+        // Log audit trail
+        await logAudit(recordId, ownerId, 'create');
 
         // Cleanup uploaded file
         await fs.unlink(filePath);
@@ -119,11 +125,9 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
         res.json({
             status: 'success',
             recordId,
-            storagePointer,
+            pointer: storagePointer,
             ciphertextHash,
-            txId: txResult?.txId || 'no-fabric',
-            message: 'Record encrypted and stored successfully',
-            note: txResult ? 'Stored on blockchain' : 'Stored locally (Fabric network not available)'
+            message: 'Record encrypted and stored successfully'
         });
 
     } catch (error) {
@@ -139,12 +143,16 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
  * GET /api/health
  */
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', service: 'uploader' });
+    res.json({ status: 'ok', service: 'uploader-mongodb', database: 'connected' });
 });
+
+// Import access control routes
+require('./routes/accessControl')(app);
+require('./routes/records')(app);
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-    console.log(`Uploader service running on port ${PORT}`);
+    console.log(`Uploader service (MongoDB) running on port ${PORT}`);
 });
 
 module.exports = app;
