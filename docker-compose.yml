@@ -1,0 +1,176 @@
+version: '3.8'
+
+services:
+  # Hyperledger Fabric Network
+  orderer.example.com:
+    container_name: orderer.example.com
+    image: hyperledger/fabric-orderer:2.5
+    environment:
+      - FABRIC_LOGGING_SPEC=INFO
+      - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+      - ORDERER_GENERAL_LISTENPORT=7050
+      - ORDERER_GENERAL_BOOTSTRAPMETHOD=file
+      - ORDERER_GENERAL_BOOTSTRAPFILE=/var/hyperledger/orderer/orderer.genesis.block
+      - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
+      - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp
+      - ORDERER_GENERAL_TLS_ENABLED=false
+      - ORDERER_KAFKA_TOPIC_REPLICATIONFACTOR=1
+      - ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+      - ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+      - ORDERER_GENERAL_CLUSTER_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric
+    command: orderer
+    volumes:
+      - ./fabric-network/orderer:/var/hyperledger/orderer
+    ports:
+      - "7050:7050"
+    networks:
+      - medblock-network
+
+  peer0.org1.example.com:
+    container_name: peer0.org1.example.com
+    image: hyperledger/fabric-peer:2.5
+    environment:
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=medblock_medblock-network
+      - FABRIC_LOGGING_SPEC=INFO
+      - CORE_PEER_TLS_ENABLED=false
+      - CORE_PEER_GOSSIP_USELEADERELECTION=true
+      - CORE_PEER_GOSSIP_ORGLEADER=false
+      - CORE_PEER_PROFILE_ENABLED=true
+      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
+      - CORE_PEER_TLS_ROOTCAS_FILE=/etc/hyperledger/fabric/tls/ca.crt
+      - CORE_PEER_ID=peer0.org1.example.com
+      - CORE_PEER_ADDRESS=peer0.org1.example.com:7051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:7051
+      - CORE_PEER_CHAINCODEADDRESS=peer0.org1.example.com:7052
+      - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org1.example.com:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.org1.example.com:7051
+      - CORE_PEER_LOCALMSPID=Org1MSP
+    volumes:
+      - /var/run/:/host/var/run/
+      - ./fabric-network/peer0.org1.example.com:/etc/hyperledger/fabric
+      - ./chaincode:/opt/chaincode
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    command: peer node start
+    ports:
+      - "7051:7051"
+      - "7052:7052"
+    depends_on:
+      - orderer.example.com
+    networks:
+      - medblock-network
+
+  # MinIO (S3-compatible storage)
+  minio:
+    container_name: minio
+    image: minio/minio:latest
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - ./minio-data:/data
+    networks:
+      - medblock-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # Vault Mock (Simple REST API for KMS simulation)
+  vault-mock:
+    container_name: vault-mock
+    image: node:18-alpine
+    working_dir: /app
+    command: sh -c "npm install -g http-server && http-server -p 8200 -c-1 /app"
+    volumes:
+      - ./vault-mock:/app
+    ports:
+      - "8200:8200"
+    networks:
+      - medblock-network
+    depends_on:
+      - minio
+
+  # Backend Services
+  backend-uploader:
+    container_name: backend-uploader
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.uploader
+    environment:
+      - NODE_ENV=development
+      - FABRIC_PEER=peer0.org1.example.com:7051
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - VAULT_URL=http://vault-mock:8200
+      - PORT=3001
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./backend:/app
+      - ./fabric-network:/fabric-network
+    depends_on:
+      - peer0.org1.example.com
+      - minio
+      - vault-mock
+    networks:
+      - medblock-network
+
+  backend-keyservice:
+    container_name: backend-keyservice
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.keyservice
+    environment:
+      - NODE_ENV=development
+      - FABRIC_PEER=peer0.org1.example.com:7051
+      - VAULT_URL=http://vault-mock:8200
+      - PORT=3002
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./backend:/app
+      - ./fabric-network:/fabric-network
+    depends_on:
+      - peer0.org1.example.com
+      - vault-mock
+    networks:
+      - medblock-network
+
+  # React Frontend
+  frontend:
+    container_name: frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      - REACT_APP_API_URL=http://localhost:3001
+      - REACT_APP_KEYSERVICE_URL=http://localhost:3002
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend-uploader
+      - backend-keyservice
+    networks:
+      - medblock-network
+
+networks:
+  medblock-network:
+    driver: bridge
+
+volumes:
+  minio-data:
+  fabric-network:
+

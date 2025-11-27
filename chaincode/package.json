@@ -1,0 +1,22 @@
+{
+  "name": "healthcare-chaincode",
+  "version": "1.0.0",
+  "description": "Hyperledger Fabric chaincode for healthcare data collaboration",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha --timeout 10000"
+  },
+  "dependencies": {
+    "fabric-contract-api": "^2.5.0",
+    "fabric-shim": "^2.5.0"
+  },
+  "devDependencies": {
+    "mocha": "^10.0.0",
+    "chai": "^4.3.0",
+    "fabric-shim": "^2.5.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+

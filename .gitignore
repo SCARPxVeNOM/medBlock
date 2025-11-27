@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Fabric network
+fabric-network/
+wallet/
+keystore/
+keys/
+
+# MinIO data
+minio-data/
+
+# Uploads
+uploads/
+*.enc
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+build/
+dist/
+
+# Logs
+logs/
+*.log
+
